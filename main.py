@@ -10,147 +10,25 @@ import zlib
 
 from PyQt6 import QtCore, QtGui, QtWidgets, uic
 from PyQt6.QtCore import QPauseAnimation, Qt
-from PyQt6.QtCore import QSize, Qt, QTimer,QPoint, QEasingCurve, QPoint, QPoint, QPropertyAnimation, QSequentialAnimationGroup
+from PyQt6.QtCore import (
+    QEasingCurve,
+    QPoint,
+    QPoint,
+    QPoint,
+    QPropertyAnimation,
+    QSequentialAnimationGroup,
+    QSize,
+    QTimer,
+    Qt,
+)
 from PyQt6.QtGui import QColor, QPalette
 from PyQt6.QtWidgets import QApplication
-from PyQt6.QtWidgets import *
-
+from PyQt6.QtWidgets import * # pyright: ignore
 import bcrypt
 from cryptography.fernet import Fernet
 from tqdm import tqdm
-
-
-
-class encrypt_decrypt():
-
-    def write_key(self):
-
-        key = Fernet.generate_key()
-        with open("key.key", "wb") as key_file:
-            key_file.write(key)
-
-    def load_key(self):
-        
-        return open("key.key", "rb").read()
-
-
-    def encrypt(self,filename, key):
-        
-        f = Fernet(key)
-        with open(filename, "rb") as file:
-            file_data = file.read()
-
-        encrypted_data = f.encrypt(file_data)
-        
-        with open(filename, "wb") as file:
-            file.write(encrypted_data)
-
-
-    def decrypt(self,filename, key):
-
-        f = Fernet(key)
-        with open(filename, "rb") as file:
-            encrypted_data = file.read()
-            
-        decrypted_data = f.decrypt(encrypted_data)
-        
-        with open(filename, "wb") as file:
-            file.write(decrypted_data)
-
-
-    def crypt(self,eord,file):
-        
-
-            if eord == True:
-                self.encrypt(file,self.load_key())
-            else:
-                self.decrypt(file,self.load_key())
-
-    def run(self,directory,saltyness,eord):
-        fi = []
-        for path, subdirs, files in os.walk(directory):
-            try:
-                for name in files:
-                    fi.append(os.path.join(path, name))
-            except:
-                pass
-
-        fi = fi*saltyness
-
-        def update_progress_bar(result):
-            progress_bar.update(1)
-            
-        global progress_bar
-        p = ThreadPool(len(fi))
-        with tqdm(total=len(fi)) as progress_bar:
-            for f in fi:
-                p.apply_async(self.crypt, args=(eord,f,), callback=update_progress_bar)
-            p.close()
-            p.join()
-
-def pass_deduction(pass_):
-    def obscure(data: bytes) -> bytes:
-        return b64e(zlib.compress(data, 9))
-    
-    text= pass_ * 7
-    obscured = (obscure(text.encode("utf-8")))
-    print(obscured.decode("utf-8"))
-    total = 1
-    mord = True
-    for l in list(obscured):
-
-        if mord == True:
-            total = total * l
-            mord = False
-        else:
-            total = total + l
-            mord = True
-
-    d = (int(str(round(float(str(total/len(text)).split("e")[0]),0)).strip(".0")))
-
-    while  d > 5:
-        d = math.trunc((d / (int(len(str(d)) + len(text))))*1.5)
-
-    if d == 0:
-        d = math.trunc(obscured[0]/15)
-        
-    return d
-
-# e = encrypt_decrypt()
-
-# parser = argparse.ArgumentParser(description="Simple Directory Encryptor Script")
-
-# parser.add_argument("directory", help="Directory to encrypt/decrypt")
-
-# parser.add_argument("passcode", help="Passcode to encrypt/decrypt with")
-
-# parser.add_argument("-g", "--generate-key", dest="generate_key", action="store_true", help="Whether to generate a new key or use existing")
-
-# parser.add_argument("-e", "--encrypt", action="store_true", help="Whether to encrypt the directory, only -e or -d can be specified.")
-
-# parser.add_argument("-d", "--decrypt", action="store_true", help="Whether to decrypt the directory, only -e or -d can be specified.")
-
-# args = parser.parse_args()
-# directory = args.directory
-# generate_key = args.generate_key
-# into = args.passcode
-
-# saltyness = pass_deduction(into)
-
-# if generate_key:
-#     e.write_key()
-
-# encrypt_ = args.encrypt
-# decrypt_ = args.decrypt
-
-# if encrypt_ and decrypt_:
-#     raise TypeError("Please specify whether you want to encrypt the files or decrypt it.")
-# elif encrypt_:
-#     e.run(directory, saltyness, True)
-# elif decrypt_:
-#     e.run(directory, saltyness, False)
-# else:
-#     raise TypeError("Please specify whether you want to encrypt the files or decrypt it.")
+from pathlib import Path
+import encrypt 
 
 
 
@@ -166,78 +44,229 @@ with open("style.qss", "r") as f:
 
 
 # Todo: create a index of all encrypted locations with encrypted passw for each one in dictionary file
+#Todo: implement frameless window
 class MainWindow(QMainWindow):
     
     def __init__(self):
         super().__init__()
 
-        self.setFixedSize(QSize(500, 470))
         self.setWindowTitle("Encryption Tool")
+        #self.setWindowFlags(QtCore.Qt.WindowType.FramelessWindowHint)
         
         self.UiComponents()
+
+        self.proceed_folder = False
+        self.proceed_passphrase = False
+        #self.setMouseTracking(True)
+
+    def write_key(self):
+
+        key = Fernet.generate_key()
+        with open("key.key", "wb") as key_file:
+            key_file.write(key)
+
+    def load_key(self):
+        
+        return open("key.key", "rb").read()
+
+
+    def encrypt(self, filename, key):
+        
+        f = Fernet(key)
+        with open(filename, "rb") as file:
+            file_data = file.read()
+
+        encrypted_data = f.encrypt(file_data)
+        
+        with open(filename, "wb") as file:
+            file.write(encrypted_data)
+
+
+    def decrypt(self, filename, key):
+
+        f = Fernet(key)
+        with open(filename, "rb") as file:
+            encrypted_data = file.read()
+            
+        decrypted_data = f.decrypt(encrypted_data)
+        
+        with open(filename, "wb") as file:
+            file.write(decrypted_data)
+
+
+    def crypt(self, eord,file):
+        
+
+            if eord == True:
+                self.encrypt(file, self.load_key())
+            else:
+                self.decrypt(file, self.load_key())
+
+    def run(self, directory,saltyness,eord):
+        fi = []
+        for path, subdirs, files in os.walk(directory):
+            try:
+                for name in files:
+                    fi.append(os.path.join(path, name))
+            except:
+                pass
+
+        fi = fi*saltyness
+
+        def update_progress_bar(result):
+            value = self.prog_bar.value()
+            self.prog_bar.setValue(value + 1)
+            
+        global progress_bar
+        p = ThreadPool(len(fi))
+
+        for f in fi:
+            p.apply_async(self.crypt, args=(eord,f,), callback=update_progress_bar)
+        p.close()
+        p.join()
+
+    def pass_deduction(self, ind):
+        def obscure(data: bytes) -> bytes:
+            return b64e(zlib.compress(data, 9))
+        
+        text= ind * 7
+        obscured = (obscure(text.encode("utf-8")))
+        print(obscured.decode("utf-8"))
+        total = 1
+        mord = True
+        for l in list(obscured):
+
+            if mord == True:
+                total = total * l
+                mord = False
+            else:
+                total = total + l
+                mord = True
+
+        d = (int(str(round(float(str(total/len(text)).split("e")[0]),0)).strip(".0")))
+
+        while  d > 5:
+            d = math.trunc((d / (int(len(str(d)) + len(text))))*1.5)
+
+        if d == 0:
+            d = math.trunc(obscured[0]/15)
+            
+        return d
+
+    def main(self, directory, passw, eord):
+        salt = self.slider_num.text()
+        
+        if not os.path.exists("key.key"):
+            self.write_key()
+        self.run(directory,salt,eord)
 
 
 
     def UiComponents(self):    
-
+# Todo: each button has to have been clicked and allowable result for encrypt and decrypt to become usable
+        spacing = 25
+        
         self.alert_label = QLabel("", self)
-        self.alert_label.setGeometry(0, -20, 500, 20)
+        self.alert_label.setGeometry(0, -30, 500, 30)
         self.alert_label.setStyleSheet("")
         self.alert_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             
         self.select = QPushButton("Select Folder",self)
-        self.select.setGeometry(140, 30, 220, 48)
-
+        self.select.setGeometry(140, 40, 220, 55)
         self.select.clicked.connect(self.select_folder)
         
         self.select_label = QLabel("No Folder Selected Yet", self)
-        self.select_label.setGeometry(10, 85, 480, 45)
+        self.select_label.setGeometry(10, 95 + spacing, 480, 45)
         self.select_label.setStyleSheet("font-size: 3vw;")
         self.select_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        
+
         self.passcode_label = QLabel("Enter Passphrase For Encryption:", self)
-        self.passcode_label.setGeometry(140, 166, 220, 32)
+        self.passcode_label.setGeometry(140, 140 + (spacing * 2) , 220, 30)
         self.passcode_label.setStyleSheet("font-size: 15px;")
         self.passcode_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         
         self.passcode = QLineEdit("",self)
-        self.passcode.setGeometry(140, 220, 220, 32)
+        self.passcode.setGeometry(140, 170 + (spacing * 3), 220, 30)
         self.passcode.setMaxLength(20)
-
+        self.passcode.setEchoMode(QLineEdit.EchoMode.Password)
+        self.passcode.textChanged.connect(self.line_edited)
         
-        self.encrypt = QPushButton('Encrypt', self)
-        self.encrypt.setStyleSheet("font-size: 13px;")
-        self.encrypt.setGeometry(260,300,180,55)
-        self.encrypt.clicked.connect(self.encrypt_pressed)
+        self.button = QPushButton('', self)
+        self.button.setGeometry(330, 170 + (spacing * 3), 30, 30)
+        self.button.clicked.connect(self.show_pass)
+        self.button.setIcon(QtGui.QIcon('eye.png'))
+        self.button.setIconSize(QtCore.QSize(20,30))
+        self.button.setCheckable(True)
         
-        self.decrypt = QPushButton('Decrypt', self)
-        self.decrypt.setStyleSheet("font-size: 13px;")
-        self.decrypt.setGeometry(60,300,180,55)
-        self.decrypt.clicked.connect(self.decrypt_pressed)
+        self.slider_label = QLabel("Level Of Encryption:", self)
+        self.slider_label.setGeometry(60, 198 + (spacing * 4), 160, 30)
+        self.slider_label.setStyleSheet("font-size: 15px;")
+        self.slider_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        
+        self.slider_num = QLabel("1", self)
+        self.slider_num.setGeometry(410, 198 + (spacing * 4), 20, 30)
+        self.slider_num.setStyleSheet("font-size: 15px;")
+        self.slider_num.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        
+        self.slider = QSlider(Qt.Orientation.Horizontal, self)
+        self.slider.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.slider.setGeometry(240, 200 + (spacing * 4), 160, 30)
+        self.slider.valueChanged[int].connect(self.slider_update) #pyright: ignore
+        self.slider.setTickPosition(QSlider.TickPosition.TicksBelow)
+        self.slider.setMinimum(1)
+        self.slider.setMaximum(10)
+    
+        self.encrypt_button = QPushButton('Encrypt', self)
+        self.encrypt_button.setStyleSheet("font-size: 13px;")
+        self.encrypt_button.setGeometry(260, 230 + (spacing * 5),180,55)
+        self.encrypt_button.clicked.connect(self.encrypt_pressed)
+        self.encrypt_button.setDisabled(True)
+        
+        self.decrypt_button = QPushButton('Decrypt', self)
+        self.decrypt_button.setStyleSheet("font-size: 13px;")
+        self.decrypt_button.setGeometry(60, 230 + (spacing * 5),180,55)
+        self.decrypt_button.clicked.connect(self.decrypt_pressed)
+        self.decrypt_button.setDisabled(True)
+        
+        self.prog_bar = QProgressBar(self)
+        self.prog_bar.setGeometry(60, 285 + (spacing * 6), 380, 55)
+        
+        mx = 380 + (spacing * 6)
+        self.setFixedSize(QSize(500, mx))
 
-    def alert(self, message):
+    # def mousePressEvent(self, e):
+    #     print("mousePressEvent")
+    #     x = int(e.position().x())
+    #     y = int(e.position().y())
+    #     print(x,y)
+        
+    # def mouseReleaseEvent(self, e):
+    #     print("mouseReleaseEvent")
+    def alert(self, message,severity):
         print(message)
+        # self.encrypt.setEnabled(False)
+        # QTimer.singleShot(8000, lambda: self.encrypt.setDisabled(False))
+        # self.decrypt.setEnabled(False)
+        # QTimer.singleShot(8000, lambda: self.decrypt.setDisabled(False))
+        if severity == 0:
+            color = "red"
+        elif severity == 1:
+            color = "#ffbf00"
+        else:
+            color = "red"
 
-        self.encrypt.setEnabled(False)
-        QTimer.singleShot(8000, lambda: self.encrypt.setDisabled(False))
-        self.decrypt.setEnabled(False)
-        QTimer.singleShot(8000, lambda: self.decrypt.setDisabled(False))
-        
         x = self.alert_label.x()
         y = self.alert_label.y()
-        if x == 0 and y == -20:
-            print("Start")
+        if x == 0 and y == -30:
             self.alert_label.setText(message)
-
-            self.alert_label.setStyleSheet("background-color: red;"
-                                            "font-size: 18px;")
-
+            self.alert_label.setStyleSheet(f"background-color: {color};"
+                                            "font-size: 16px;")
             self.anim = QPropertyAnimation(self.alert_label, b"pos") # pyright: ignore
             self.anim.setEasingCurve(QEasingCurve.Type.InOutCubic)
             self.anim.setEndValue(QPoint(0, 0))
             self.anim.setDuration(1500)
             self.anim_2 = QPropertyAnimation(self.alert_label, b"pos") # pyright: ignore
-            self.anim_2.setEndValue(QPoint(0, -20))
+            self.anim_2.setEndValue(QPoint(0, -30))
             self.anim_2.setDuration(2000)
             self.delay = QPauseAnimation(5000)
             self.anim_group = QSequentialAnimationGroup()
@@ -251,29 +280,55 @@ class MainWindow(QMainWindow):
             self.return_.setEndValue(QPoint(0, -20))
             self.return_.setDuration(1000)
             self.return_.start()
-        
-        
+
     def select_folder(self):
         dir_ = QtWidgets.QFileDialog.getExistingDirectory(None, 'Select project folder:')
-        print(dir_)
-        n = ("Selected:  " + dir_).split("/")
         
-        for part in n:
-            if n.index(part) == len(n):
-                print("end")
-            if len(part) > 12 and not ":" in part and not n.index(part) == len(n)-1:
-                n[n.index(part)]= "..."
+        con = True
+        parent_path_to_test = dir_
+        child_path_to_test = os.path.dirname(os.path.realpath(__file__))
+        try:
+            if os.path.commonpath([os.path.abspath(parent_path_to_test)]) == os.path.commonpath([os.path.abspath(parent_path_to_test), os.path.abspath(child_path_to_test)]):
+                con = False
+        except ValueError:
+            con = True
 
-        while len("\\".join(n)) > 70:
-            del n[1]
-            
-        n.insert(1,"...")
-        self.select_label.setText("\\".join(n))
-        
-        self.directory = dir_
+        if con == True:            
+            if not len(dir_) == 3:
+                n = ("Selected:  " + dir_).split("/")
+                for part in n:
+                    if n.index(part) == len(n):
+                        print("end")
+                    if len(part) > 15 and not ":" in part and not n.index(part) == len(n)-1:
+                        n[n.index(part)]= "..."
+
+                while len("\\".join(n)) > 70:
+                    del n[1]
+                    
+                n.insert(1,"...")
+                n = "\\".join(n)
+            else:
+                n = dir_
+                print("root")
+                print(n)
+                self.alert("You have selected a disk", 1)
+                
+            if os.access(dir_, os.R_OK | os.W_OK):
+                self.directory = dir_
+                print("dir ok")
+                self.proceed_folder = True
+                self.select_label.setText(n)
+            else:
+                self.alert("Please select a valid folder", 0)
+                self.select_label.setText("Folder Selected Is Not Valid")
+                self.proceed_folder = False
+        else:
+            self.alert("The directory you selected contains this program", 0)
+            self.select_label.setText("Folder Selected Is Not Valid")
+            self.proceed_folder = False
+        self.check_for_unlock()
         
     def encrypt_pressed(self):
-    # Todo: check if empty
         print(self.passcode.text())
         
         hashed = bcrypt.hashpw(self.passcode.text().encode("utf-8"), bcrypt.gensalt(10))
@@ -282,9 +337,10 @@ class MainWindow(QMainWindow):
             f.close()
         #e = encrypt_decrypt()
         #e.run(self.directory, pass_deduction(self.passcode.text()), True)
+        
     def decrypt_pressed(self):
 
-        self.alert("No Folder Selected")
+        self.alert("No Folder Selected", 0)
 
         if bcrypt.checkpw(self.passcode.text().encode("utf-8"),open("passw", "rb").read()):
 
@@ -292,10 +348,37 @@ class MainWindow(QMainWindow):
         else:
             print("failed")
     
+    def line_edited(self):
+        print(self.passcode.text())
+        if len(self.passcode.text()) > 2:
+            self.proceed_passphrase = True
+        else:
+            self.proceed_passphrase = False
+        self.check_for_unlock()
+        
+    def show_pass(self):
+        if self.button.isChecked():
+            self.passcode.setEchoMode(QLineEdit.EchoMode.Normal)
+        else:
+            self.passcode.setEchoMode(QLineEdit.EchoMode.Password)
+            
+    def slider_update(self, value):
+        self.slider_num.setText(str(value))
+        
+    def check_for_unlock(self):
+        if self.proceed_folder == True and self.proceed_passphrase == True:
+            self.encrypt_button.setEnabled(True)
+            self.decrypt_button.setEnabled(True)
+        else:
+            self.encrypt_button.setEnabled(False)
+            self.decrypt_button.setEnabled(False)
+
+#Todo: whenever any input pressed run function to check if buttons can be turned on
+#Todo: button to generate new key
+#Todo: random passcode maybe 
+#Todo: custom top bar
 
 app.setStyle("Fusion")
-
-
 window = MainWindow()
 window.show()
 app.exec()
