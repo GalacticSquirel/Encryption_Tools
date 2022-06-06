@@ -26,9 +26,9 @@ from PyQt6.QtWidgets import QApplication
 from PyQt6.QtWidgets import * # pyright: ignore
 import bcrypt
 from cryptography.fernet import Fernet
-from tqdm import tqdm
+
 from pathlib import Path
-import encrypt 
+
 
 
 
@@ -44,21 +44,37 @@ with open("style.qss", "r") as f:
 
 
 # Todo: create a index of all encrypted locations with encrypted passw for each one in dictionary file
-#Todo: implement frameless window
+
+#Todo: button to generate new key
+#Todo: random passcode maybe 
+#Todo: custom top bar
+#Todo: encrypt key.key with passcode
+#Todo: rename files within directory to encrypted names
+#Todo: remove deduduction 
+
 class MainWindow(QMainWindow):
     
     def __init__(self):
         super().__init__()
 
         self.setWindowTitle("Encryption Tool")
-        #self.setWindowFlags(QtCore.Qt.WindowType.FramelessWindowHint)
-        
+        self.setWindowFlags(QtCore.Qt.WindowType.FramelessWindowHint)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.UiComponents()
 
         self.proceed_folder = False
         self.proceed_passphrase = False
         #self.setMouseTracking(True)
 
+        # transparency cannot be set for window BG in style sheets, so...
+        # self.setWindowOpacity(0.1) 
+        # self.setWindowFlags(
+        #         QtCore.Qt.WindowType.FramelessWindowHint # hides the window controls
+        #         | QtCore.Qt.WindowType.WindowStaysOnTopHint # forces window to top... maybe
+        #         | QtCore.Qt.WindowType.SplashScreen # this one hides it from the task bar!
+        #         )
+        # alternative way of making base window transparent
+        #self.setAttribute(QtCore.Qt.WA_TranslucentBackground, True) #100% transparent
     def write_key(self):
 
         key = Fernet.generate_key()
@@ -125,45 +141,45 @@ class MainWindow(QMainWindow):
         p.close()
         p.join()
 
-    def pass_deduction(self, ind):
-        def obscure(data: bytes) -> bytes:
-            return b64e(zlib.compress(data, 9))
+    # def pass_deduction(self, ind):
+    #     def obscure(data: bytes) -> bytes:
+    #         return b64e(zlib.compress(data, 9))
         
-        text= ind * 7
-        obscured = (obscure(text.encode("utf-8")))
-        print(obscured.decode("utf-8"))
-        total = 1
-        mord = True
-        for l in list(obscured):
+    #     text= ind * 7
+    #     obscured = (obscure(text.encode("utf-8")))
+    #     print(obscured.decode("utf-8"))
+    #     total = 1
+    #     mord = True
+    #     for l in list(obscured):
 
-            if mord == True:
-                total = total * l
-                mord = False
-            else:
-                total = total + l
-                mord = True
+    #         if mord == True:
+    #             total = total * l
+    #             mord = False
+    #         else:
+    #             total = total + l
+    #             mord = True
 
-        d = (int(str(round(float(str(total/len(text)).split("e")[0]),0)).strip(".0")))
+    #     d = (int(str(round(float(str(total/len(text)).split("e")[0]),0)).strip(".0")))
 
-        while  d > 5:
-            d = math.trunc((d / (int(len(str(d)) + len(text))))*1.5)
+    #     while  d > 5:
+    #         d = math.trunc((d / (int(len(str(d)) + len(text))))*1.5)
 
-        if d == 0:
-            d = math.trunc(obscured[0]/15)
+    #     if d == 0:
+    #         d = math.trunc(obscured[0]/15)
             
-        return d
+    #     return d
 
-    def main(self, directory, passw, eord):
-        salt = self.slider_num.text()
+    # def main(self, directory, passw, eord):
+    #     salt = self.slider_num.text()
         
-        if not os.path.exists("key.key"):
-            self.write_key()
-        self.run(directory,salt,eord)
+    #     if not os.path.exists("key.key"):
+    #         self.write_key()
+    #     self.run(directory,salt,eord)
 
 
 
     def UiComponents(self):    
-# Todo: each button has to have been clicked and allowable result for encrypt and decrypt to become usable
+
         spacing = 25
         
         self.alert_label = QLabel("", self)
@@ -252,6 +268,8 @@ class MainWindow(QMainWindow):
             color = "red"
         elif severity == 1:
             color = "#ffbf00"
+        elif severity == 2:
+            color = "green"
         else:
             color = "red"
 
@@ -336,17 +354,17 @@ class MainWindow(QMainWindow):
             f.write(hashed)
             f.close()
         #e = encrypt_decrypt()
-        #e.run(self.directory, pass_deduction(self.passcode.text()), True)
+        #self.run(self.directory, self.slider_num.text(), True)
         
     def decrypt_pressed(self):
 
-        self.alert("No Folder Selected", 0)
+
 
         if bcrypt.checkpw(self.passcode.text().encode("utf-8"),open("passw", "rb").read()):
 
-            print("correct")
+            self.alert("Passphrase is correct", 2)
         else:
-            print("failed")
+            self.alert("Passphrase is not correct", 0)
     
     def line_edited(self):
         print(self.passcode.text())
@@ -373,10 +391,8 @@ class MainWindow(QMainWindow):
             self.encrypt_button.setEnabled(False)
             self.decrypt_button.setEnabled(False)
 
-#Todo: whenever any input pressed run function to check if buttons can be turned on
-#Todo: button to generate new key
-#Todo: random passcode maybe 
-#Todo: custom top bar
+
+
 
 app.setStyle("Fusion")
 window = MainWindow()
