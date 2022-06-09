@@ -7,7 +7,8 @@ import os
 import os
 import sys
 import zlib
-
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import as_completed
 from PyQt6 import QtCore, QtGui, QtWidgets, uic
 from PyQt6.QtCore import QPauseAnimation, Qt
 from PyQt6.QtCore import (
@@ -58,8 +59,8 @@ class MainWindow(QMainWindow):
         super().__init__()
 
         self.setWindowTitle("Encryption Tool")
-        self.setWindowFlags(QtCore.Qt.WindowType.FramelessWindowHint)
-        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        #self.setWindowFlags(QtCore.Qt.WindowType.FramelessWindowHint)
+        #self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.UiComponents()
 
         self.proceed_folder = False
@@ -112,70 +113,62 @@ class MainWindow(QMainWindow):
 
     def crypt(self, eord,file):
         
-
-            if eord == True:
-                self.encrypt(file, self.load_key())
-            else:
-                self.decrypt(file, self.load_key())
+        self.value = self.value +1
+        if eord == True:
+            
+            print(self.value)
+            print("e ", file)
+            self.encrypt(file, self.load_key())
+        else:
+            self.decrypt(file, self.load_key())
 
     def run(self, directory,saltyness,eord):
-        fi = []
+
+        print(directory)
+        print(saltyness)
+        print(eord)
+        self.fi = []
         for path, subdirs, files in os.walk(directory):
             try:
                 for name in files:
-                    fi.append(os.path.join(path, name))
+                    self.fi.append(os.path.join(path, name))
             except:
                 pass
+        self.prog_bar.setRange(0, len(self.fi))
+        self.fi = self.fi*int(saltyness)
 
-        fi = fi*saltyness
-
-        def update_progress_bar(result):
-            value = self.prog_bar.value()
-            self.prog_bar.setValue(value + 1)
+        # def update_progress_bar(result):
+        #     value = self.prog_bar.value()
+        #     self.prog_bar.setValue(value + 1)
             
-        global progress_bar
-        p = ThreadPool(len(fi))
+        # global progress_bar
+        # p = ThreadPool(len(fi))
 
-        for f in fi:
-            p.apply_async(self.crypt, args=(eord,f,), callback=update_progress_bar)
-        p.close()
-        p.join()
-
-    # def pass_deduction(self, ind):
-    #     def obscure(data: bytes) -> bytes:
-    #         return b64e(zlib.compress(data, 9))
+        # for f in fi:
+        #     p.apply_async(self.crypt, args=(eord,f,), callback=update_progress_bar)
+        # p.close()
+        # p.join()
         
-    #     text= ind * 7
-    #     obscured = (obscure(text.encode("utf-8")))
-    #     print(obscured.decode("utf-8"))
-    #     total = 1
-    #     mord = True
-    #     for l in list(obscured):
+        middle_index=round(len(self.fi)/2)
 
-    #         if mord == True:
-    #             total = total * l
-    #             mord = False
-    #         else:
-    #             total = total + l
-    #             mord = True
-
-    #     d = (int(str(round(float(str(total/len(text)).split("e")[0]),0)).strip(".0")))
-
-    #     while  d > 5:
-    #         d = math.trunc((d / (int(len(str(d)) + len(text))))*1.5)
-
-    #     if d == 0:
-    #         d = math.trunc(obscured[0]/15)
-            
-    #     return d
-
-    # def main(self, directory, passw, eord):
-    #     salt = self.slider_num.text()
+        first_half=self.fi[:middle_index]
+        sec_half=self.fi[middle_index:]
         
-    #     if not os.path.exists("key.key"):
-    #         self.write_key()
-    #     self.run(directory,salt,eord)
-
+        self.value = 0
+        with ThreadPoolExecutor(round(len(first_half))) as executor:
+            futures = []
+            for i in first_half:
+                print(i)
+                futures.append(executor.submit(lambda:self.crypt(eord,i)))
+            for future in as_completed(futures):
+                self.prog_bar.setValue(self.value)
+                
+        with ThreadPoolExecutor(round(len(sec_half))) as executor:
+            futures = []
+            for i in sec_half:
+                futures.append(executor.submit(lambda:self.crypt(eord,i)))
+            for future in as_completed(futures):
+                self.prog_bar.setValue(self.value)
 
 
     def UiComponents(self):    
@@ -348,21 +341,22 @@ class MainWindow(QMainWindow):
         
     def encrypt_pressed(self):
         print(self.passcode.text())
-        
+        self.value = 0
+        self.prog_bar.setValue(self.value)
         hashed = bcrypt.hashpw(self.passcode.text().encode("utf-8"), bcrypt.gensalt(10))
         with open("passw", "wb") as f:
             f.write(hashed)
             f.close()
         #e = encrypt_decrypt()
-        #self.run(self.directory, self.slider_num.text(), True)
+        self.run(self.directory, self.slider_num.text(), True)
         
     def decrypt_pressed(self):
 
-
-
         if bcrypt.checkpw(self.passcode.text().encode("utf-8"),open("passw", "rb").read()):
-
+            self.value = 0
+            self.prog_bar.setValue(self.value)
             self.alert("Passphrase is correct", 2)
+            self.run(self.directory, self.slider_num.text(), False)
         else:
             self.alert("Passphrase is not correct", 0)
     
