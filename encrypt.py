@@ -9,72 +9,72 @@ from cryptography.fernet import Fernet # pyright: ignore
 from tqdm import tqdm
 
 
-class encrypt_decrypt():
 
-    def write_key(self):
 
-        key = Fernet.generate_key()
-        with open("key.key", "wb") as key_file:
-            key_file.write(key)
+def write_key():
 
-    def load_key(self):
+    key = Fernet.generate_key()
+    with open("key.key", "wb") as key_file:
+        key_file.write(key)
+
+def load_key():
+    
+    return open("key.key", "rb").read()
+
+
+def encrypt(filename, key):
+    
+    f = Fernet(key)
+    with open(filename, "rb") as file:
+        file_data = file.read()
+
+    encrypted_data = f.encrypt(file_data)
+    
+    with open(filename, "wb") as file:
+        file.write(encrypted_data)
+
+
+def decrypt(filename, key):
+
+    f = Fernet(key)
+    with open(filename, "rb") as file:
+        encrypted_data = file.read()
         
-        return open("key.key", "rb").read()
+    decrypted_data = f.decrypt(encrypted_data)
+    
+    with open(filename, "wb") as file:
+        file.write(decrypted_data)
 
 
-    def encrypt(self,filename, key):
+def crypt(eord,file):
+    
+
+        if eord == True:
+            encrypt(file,load_key())
+        else:
+            decrypt(file,load_key())
+
+def run(directory,saltyness,eord):
+    fi = []
+    for path, subdirs, files in os.walk(directory):
+        try:
+            for name in files:
+                fi.append(os.path.join(path, name))
+        except:
+            pass
+
+    fi = fi*saltyness
+
+    def update_progress_bar(result):
+        progress_bar.update(1)
         
-        f = Fernet(key)
-        with open(filename, "rb") as file:
-            file_data = file.read()
-
-        encrypted_data = f.encrypt(file_data)
-        
-        with open(filename, "wb") as file:
-            file.write(encrypted_data)
-
-
-    def decrypt(self,filename, key):
-
-        f = Fernet(key)
-        with open(filename, "rb") as file:
-            encrypted_data = file.read()
-            
-        decrypted_data = f.decrypt(encrypted_data)
-        
-        with open(filename, "wb") as file:
-            file.write(decrypted_data)
-
-
-    def crypt(self,eord,file):
-        
-
-            if eord == True:
-                self.encrypt(file,self.load_key())
-            else:
-                self.decrypt(file,self.load_key())
-
-    def run(self,directory,saltyness,eord):
-        fi = []
-        for path, subdirs, files in os.walk(directory):
-            try:
-                for name in files:
-                    fi.append(os.path.join(path, name))
-            except:
-                pass
-
-        fi = fi*saltyness
-
-        def update_progress_bar(result):
-            progress_bar.update(1)
-            
-        global progress_bar
-        p = ThreadPool(len(fi))
-        with tqdm(total=len(fi)) as progress_bar:
-            for f in fi:
-                p.apply_async(self.crypt, args=(eord,f,), callback=update_progress_bar)
-            p.close()
-            p.join()
+    global progress_bar
+    p = ThreadPool(len(fi))
+    with tqdm(total=len(fi)) as progress_bar:
+        for f in fi:
+            p.apply_async(crypt, args=(eord,f,), callback=update_progress_bar)
+        p.close()
+        p.join()
 
 def pass_deduction(ind):
     def obscure(data: bytes) -> bytes:
@@ -104,39 +104,54 @@ def pass_deduction(ind):
         
     return d
 
-e = encrypt_decrypt()
 
-parser = argparse.ArgumentParser(description="Simple Directory Encryptor Script")
 
-parser.add_argument("directory", help="Directory to encrypt/decrypt")
+def main(directory, passw, eord):
+    salt = pass_deduction(passw)
+    
+    if not os.path.exists("key.key"):
+        write_key()
+    run(directory,salt,eord)
 
-parser.add_argument("passcode", help="Passcode to encrypt/decrypt with")
 
-parser.add_argument("-g", "--generate-key", dest="generate_key", action="store_true", help="Whether to generate a new key or use existing")
 
-parser.add_argument("-e", "--encrypt", action="store_true", help="Whether to encrypt the directory, only -e or -d can be specified.")
 
-parser.add_argument("-d", "--decrypt", action="store_true", help="Whether to decrypt the directory, only -e or -d can be specified.")
 
-args = parser.parse_args()
-directory = args.directory
-generate_key = args.generate_key
-into = args.passcode
 
-saltyness = pass_deduction(into)
 
-if generate_key:
-    e.write_key()
 
-encrypt_ = args.encrypt
-decrypt_ = args.decrypt
 
-if encrypt_ and decrypt_:
-    raise TypeError("Please specify whether you want to encrypt the files or decrypt it.")
-elif encrypt_:
-    e.run(directory, saltyness, True)
-elif decrypt_:
-    e.run(directory, saltyness, False)
-else:
-    raise TypeError("Please specify whether you want to encrypt the files or decrypt it.")
+# parser = argparse.ArgumentParser(description="Simple Directory Encryptor Script")
+
+# parser.add_argument("directory", help="Directory to encrypt/decrypt")
+
+# parser.add_argument("passcode", help="Passcode to encrypt/decrypt with")
+
+# parser.add_argument("-g", "--generate-key", dest="generate_key", action="store_true", help="Whether to generate a new key or use existing")
+
+# parser.add_argument("-e", "--encrypt", action="store_true", help="Whether to encrypt the directory, only -e or -d can be specified.")
+
+# parser.add_argument("-d", "--decrypt", action="store_true", help="Whether to decrypt the directory, only -e or -d can be specified.")
+
+# args = parser.parse_args()
+# directory = args.directory
+# generate_key = args.generate_key
+# into = args.passcode
+
+# saltyness = pass_deduction(into)
+
+# if generate_key:
+#     write_key()
+
+# encrypt_ = args.encrypt
+# decrypt_ = args.decrypt
+
+# if encrypt_ and decrypt_:
+#     raise TypeError("Please specify whether you want to encrypt the files or decrypt it.")
+# elif encrypt_:
+#     run(directory, saltyness, True)
+# elif decrypt_:
+#     run(directory, saltyness, False)
+# else:
+#     raise TypeError("Please specify whether you want to encrypt the files or decrypt it.")
 
